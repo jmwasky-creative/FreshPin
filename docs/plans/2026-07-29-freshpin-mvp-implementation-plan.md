@@ -49,7 +49,11 @@ git commit -m "feat: bootstrap FreshPin application"
 
 **Step 3: Implement Supabase email OTP login, tables, RLS policies, and schema mappings.**
 
+Configure short-lived access tokens with refresh-token rotation and a 30-day (`720h`) maximum session lifetime. Add a shared protected-page header whose accessible “返回首页” link targets `/`.
+
 **Step 4: Re-run the tests and verify each user can access only their own records.**
+
+Verify a session remains valid before its 30-day time-box and requires email re-authentication after it; verify every protected route renders the return-home link.
 
 **Step 5: Commit.**
 
