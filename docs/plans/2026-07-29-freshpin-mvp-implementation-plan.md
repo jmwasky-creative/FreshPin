@@ -73,6 +73,8 @@ Verify a session remains valid before its 30-day time-box and requires email re-
 
 **Step 3: Implement image upload, marker placement using `xRatio`/`yRatio`, and location selection.**
 
+Every upload Route Handler must call `validateImageForStorage` before Storage writes so both the container preflight and the server-side real decode are enforced.
+
 **Step 4: Re-run the tests and verify responsive placement remains correct.**
 
 **Step 5: Commit.**
