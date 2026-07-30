@@ -1,38 +1,53 @@
 # FreshPin
 
-FreshPin 是一个手机优先的 Web 应用，用于记录物品的存放位置和保质期，并在临期或到期时通过邮件提醒用户。
+FreshPin 是一个手机优先的 Web 应用，目标是帮助用户可靠回答三个问题：物品是什么、放在哪里、何时过期。
 
-> 当前项目处于 MVP 设计阶段；本仓库暂未包含可运行的应用代码。
+> 当前仓库包含可运行的基础原型和经过单元测试的领域能力；尚不是可供真实用户验收的完整 MVP。
 
-## MVP 要解决的问题
+## 当前可运行内容
 
-1. 物品是什么？
-2. 物品放在哪里？
-3. 物品什么时候过期？
+- Next.js App Router、TypeScript、Tailwind CSS 与 Vitest 基础工程。
+- 首页（`/`）和“我的空间”页面（`/spaces`），其中包含可访问的“返回首页”链接。
+- 坐标归一化、空间输入快照、过期日期计算、30 天会话策略和图片格式/真实解码校验等独立领域模块。
+- 根节点对浏览器扩展预先修改 `<html>` 属性的 hydration 兼容处理。
 
-## 核心流程
+## 当前明确未实现的内容
 
-1. 用户通过邮箱验证码登录。
-2. 上传厨房、冰箱或柜子等空间图片，并在图片上标记可存放物品的位置。
-3. 拍摄或上传物品包装图片，由图像识别服务提取名称与日期信息；用户可随时修正识别结果。
-4. 选择具体位置后保存物品；物品会显示在对应空间图片的标记附近。
-5. 定时任务检查临期物品，并通过邮件发送提醒。
+按当前决策，**暂不安装或接入 Supabase**。因此以下能力仍处于计划阶段，不能将原型误认为已具备这些功能：
 
-## 技术规划
+- 邮箱 OTP、受保护路由和真实会话。
+- 数据库持久化、RLS、私有图片 Storage 与上传 Route Handler。
+- 空间/位置/物品的跨刷新保存与跨用户隔离。
+- Angus 识别、Resend 邮件提醒、Cron 幂等和端到端验收。
 
-- Next.js App Router + TypeScript
-- Tailwind CSS
-- Supabase Auth、PostgreSQL 与 Storage
-- Drizzle ORM
-- Angus 图像识别 API
-- Vercel Cron
-- Resend 邮件服务
-- Vercel 部署
+## 本地运行与验证
+
+需要 Node.js 20.9 或更高版本。
+
+```bash
+npm install
+npm run dev
+```
+
+打开终端显示的本地地址，检查 `/` 与 `/spaces`。质量检查可分别运行：
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+`next build` 与正在运行的 `next dev` 共用构建目录，运行生产构建前应先停止开发服务器。
+
+当前原型与完整 MVP 的验收边界见[验证矩阵](./docs/verification/prototype-acceptance-matrix.md)。
 
 ## 文档
 
-- [MVP 产品与技术设计文档](./智能物品过期与位置管理工具_MVP设计文档.md)
+- [MVP 架构决策](./docs/architecture/freshpin-mvp-architecture.md)
+- [MVP 实施计划](./docs/plans/2026-07-29-freshpin-mvp-implementation-plan.md)
+- [原始 MVP 产品与技术设计](./智能物品过期位置管理工具_MVP设计文档.md)
 
-## 项目状态
+## 下一步
 
-已完成 MVP 需求与技术方案设计。后续将按优先级实现邮箱登录、空间与位置管理、物品识别录入，以及到期提醒闭环。
+在允许接入 Supabase 后，按架构实现认证、迁移/RLS、私有 Storage 和 Route Handlers，再以完整的“登录 → 创建空间 → 标记位置 → 保存物品 → 提醒”链路进行集成与 E2E 验收。
