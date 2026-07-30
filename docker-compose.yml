@@ -1,0 +1,59 @@
+name: keepspot
+
+services:
+  app:
+    container_name: keepspot-app
+    image: keepspot-mvp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-KeepSpot}
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - keepspot-network
+
+  reminder-scheduler:
+    container_name: keepspot-reminder-scheduler
+    image: node:22-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    environment:
+      APP_INTERNAL_URL: http://app:3000
+      CRON_INTERVAL_MINUTES: ${CRON_INTERVAL_MINUTES:-60}
+      RUN_CRON_ON_START: ${RUN_CRON_ON_START:-true}
+    command: ["node", "/opt/keepspot/cron-runner.mjs"]
+    volumes:
+      - ./scripts/cron-runner.mjs:/opt/keepspot/cron-runner.mjs:ro
+    networks:
+      - keepspot-network
+
+networks:
+  keepspot-network:
+    name: keepspot-network
