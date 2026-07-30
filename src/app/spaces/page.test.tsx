@@ -15,13 +15,16 @@ describe("SpacesPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("discloses that the space preview is local and resets on refresh", () => {
+  it("discloses that the space preview is local and resets outside the active session", () => {
     render(<SpacesPage />);
 
     expect(
       screen.getByRole("heading", { name: "本地空间预览" })
     ).toBeInTheDocument();
-    expect(screen.getByText("刷新页面后，图片和位置标记会清空。"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "本地原型：关闭或刷新页面后，图片、位置标记和物品记录都会丢失。"
+      )
+    ).toBeInTheDocument();
   });
 });

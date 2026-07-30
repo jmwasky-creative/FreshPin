@@ -9,7 +9,7 @@
 | 首页与 `/spaces` 可访问 | 已验证 | 启动 `npm run dev` 后访问两个路由；对应页面测试覆盖文案与导航。 |
 | 非首页可返回首页 | 已验证 | `AppHeader` 使用目标为 `/`、可访问名称为“返回首页”的 `Link`；页面和组件测试覆盖。 |
 | 浏览器扩展修改根 `<html>` 时的 hydration 兼容 | 代码契约已验证；仍需浏览器手测 | 根元素声明 `suppressHydrationWarning`，`layout.test.tsx` 覆盖；在启用与停用通义设计类扩展的浏览器配置中刷新 `/spaces`。 |
-| 位置坐标归一化与 marker 比例渲染 | 组件级验证 | `coordinates.test.ts`、`space-canvas.test.tsx` 与 `local-space-preview.test.tsx` 覆盖边界、键盘操作、图片加载和本地 marker；尚未连接到持久化空间页面。 |
+| 位置坐标归一化、marker 比例渲染与会话内物品记录 | 组件级验证 | `coordinates.test.ts`、`space-canvas.test.tsx`、`local-space-preview.test.tsx`、`item-input.test.ts` 与 `workspace-state.test.ts` 覆盖边界、键盘操作、图片加载、命名 marker、物品与到期状态；仅在当前浏览器会话中可用，尚未持久化。 |
 | 过期日期与状态规则 | 单元级验证 | `expiry.test.ts` 覆盖日期优先级、月末计算和无效输入。 |
 | 图片格式预筛与真实解码 | 单元级验证 | `image-upload.test.ts` 与 `server-image-validation.test.ts` 覆盖伪造/损坏图像拒绝与有效图像；尚未接入上传 Route Handler。 |
 | 30 天会话策略 | 纯函数验证 | `session-policy.test.ts`；不代表真实 OTP 或受保护路由已经存在。 |

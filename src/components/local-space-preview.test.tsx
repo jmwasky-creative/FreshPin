@@ -49,6 +49,46 @@ describe("LocalSpacePreview", () => {
     ).toBeInTheDocument();
   });
 
+  it("uses the entered space name for the active local workspace", async () => {
+    const user = userEvent.setup();
+    const image = new File(["image-bytes"], "kitchen.png", {
+      type: "image/png"
+    });
+
+    render(<LocalSpacePreview />);
+
+    const spaceNameInput = screen.getByRole("textbox", { name: "空间名称" });
+    await user.clear(spaceNameInput);
+    await user.type(spaceNameInput, "冷藏柜");
+    await user.upload(screen.getByLabelText("选择空间图片"), image);
+
+    const imageLoader = screen.getByAltText("正在加载空间图片");
+    Object.defineProperties(imageLoader, {
+      naturalHeight: { configurable: true, value: 900 },
+      naturalWidth: { configurable: true, value: 1200 }
+    });
+    fireEvent.load(imageLoader);
+
+    expect(screen.getByText("当前空间：冷藏柜")).toBeInTheDocument();
+  });
+
+  it("requires a valid space name before creating a local image URL", async () => {
+    const user = userEvent.setup();
+    const image = new File(["image-bytes"], "kitchen.png", {
+      type: "image/png"
+    });
+
+    render(<LocalSpacePreview />);
+
+    await user.clear(screen.getByRole("textbox", { name: "空间名称" }));
+    await user.upload(screen.getByLabelText("选择空间图片"), image);
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "请输入 1–50 个字符的空间名称。"
+    );
+  });
+
   it("adds a trimmed named marker after clicking the preview image", async () => {
     const user = userEvent.setup();
     const image = new File(["image-bytes"], "kitchen.png", {
@@ -91,11 +131,72 @@ describe("LocalSpacePreview", () => {
     expect(screen.getByRole("status")).toHaveTextContent("已选择位置：牛奶");
   });
 
+  it("records an item for a selected marker and shows its Chinese expiry state", async () => {
+    const user = userEvent.setup();
+    const image = new File(["image-bytes"], "kitchen.png", {
+      type: "image/png"
+    });
+
+    render(<LocalSpacePreview today="2026-02-01" />);
+
+    await user.upload(screen.getByLabelText("选择空间图片"), image);
+
+    const imageLoader = screen.getByAltText("正在加载空间图片");
+    Object.defineProperties(imageLoader, {
+      naturalHeight: { configurable: true, value: 240 },
+      naturalWidth: { configurable: true, value: 400 }
+    });
+    fireEvent.load(imageLoader);
+
+    const previewImage = screen.getByAltText("本地空间图片：kitchen.png");
+    vi.spyOn(previewImage, "getBoundingClientRect").mockReturnValue({
+      bottom: 280,
+      height: 240,
+      left: 100,
+      right: 500,
+      toJSON: () => ({}),
+      top: 40,
+      width: 400,
+      x: 100,
+      y: 40
+    });
+    fireEvent.click(previewImage, { clientX: 250, clientY: 100 });
+
+    await user.type(screen.getByRole("textbox", { name: "位置名称" }), "冷藏层");
+    await user.click(screen.getByRole("button", { name: "保存位置" }));
+    await user.click(screen.getByRole("button", { name: "选择位置：冷藏层" }));
+
+    await user.type(screen.getByLabelText("物品名称"), "酸奶");
+    await user.type(screen.getByLabelText("到期日（可选）"), "2026-02-03");
+    await user.click(screen.getByRole("button", { name: "保存物品" }));
+
+    expect(screen.getByText("酸奶")).toBeInTheDocument();
+    expect(screen.getByText("到期状态：临期")).toBeInTheDocument();
+  });
+
   it("rejects an unsupported local file before creating an object URL", async () => {
     const user = userEvent.setup({ applyAccept: false });
     const file = new File(["not-an-image"], "notes.txt", {
       type: "text/plain"
     });
+
+    render(<LocalSpacePreview />);
+
+    await user.upload(screen.getByLabelText("选择空间图片"), file);
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "请选择 JPEG、PNG 或 WebP 格式且不超过 5 MiB 的图片。"
+    );
+  });
+
+  it("rejects a local image larger than 5 MiB before creating an object URL", async () => {
+    const user = userEvent.setup();
+    const file = new File(
+      [new Uint8Array(5 * 1024 * 1024 + 1)],
+      "oversized.png",
+      { type: "image/png" }
+    );
 
     render(<LocalSpacePreview />);
 
@@ -189,7 +290,7 @@ describe("LocalSpacePreview", () => {
     expect(createLocation).toHaveFocus();
   });
 
-  it("releases the previous object URL and clears markers when replacing an image", async () => {
+  it("releases the previous object URL and clears markers and items when replacing an image", async () => {
     createObjectURL
       .mockReturnValueOnce("blob:first-kitchen")
       .mockReturnValueOnce("blob:second-kitchen");
@@ -229,7 +330,13 @@ describe("LocalSpacePreview", () => {
     fireEvent.click(firstPreview, { clientX: 250, clientY: 100 });
     await user.type(screen.getByRole("textbox", { name: "位置名称" }), "牛奶");
     await user.click(screen.getByRole("button", { name: "保存位置" }));
-    expect(screen.getByRole("button", { name: "选择位置：牛奶" })).toBeInTheDocument();
+    const milkMarker = screen.getByRole("button", { name: "选择位置：牛奶" });
+    expect(milkMarker).toBeInTheDocument();
+
+    await user.click(milkMarker);
+    await user.type(screen.getByLabelText("物品名称"), "酸奶");
+    await user.click(screen.getByRole("button", { name: "保存物品" }));
+    expect(screen.getByText("酸奶")).toBeInTheDocument();
 
     await user.upload(fileInput, replacementImage);
 
@@ -237,6 +344,7 @@ describe("LocalSpacePreview", () => {
     expect(
       screen.queryByRole("button", { name: "选择位置：牛奶" })
     ).not.toBeInTheDocument();
+    expect(screen.queryByText("酸奶")).not.toBeInTheDocument();
   });
 
   it("releases an unreadable image URL and reports a recoverable error", async () => {
