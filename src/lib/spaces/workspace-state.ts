@@ -11,24 +11,51 @@ import {
   type ValidatedSpaceInput
 } from "./space-input";
 
-export type WorkspaceLocation = {
+export type WorkspaceCoordinate = Readonly<NormalizedLocationCoordinate>;
+
+export type WorkspaceImage = Readonly<ValidatedSpaceInput["image"]>;
+
+export type WorkspaceLocation = Readonly<{
+  id: string;
+  name: string;
+  coordinate: WorkspaceCoordinate;
+}>;
+
+export type WorkspaceItem = Readonly<
+  ValidatedItemInput & {
+    id: string;
+  }
+>;
+
+export type WorkspaceSpace = Readonly<{
+  id: string;
+  name: string;
+  image: WorkspaceImage;
+  imageUrl: string;
+  locations: readonly WorkspaceLocation[];
+  items: readonly WorkspaceItem[];
+}>;
+
+type MutableWorkspaceLocation = {
   id: string;
   name: string;
   coordinate: NormalizedLocationCoordinate;
 };
 
-export type WorkspaceItem = ValidatedItemInput & {
+type MutableWorkspaceItem = ValidatedItemInput & {
   id: string;
 };
 
-export type WorkspaceSpace = {
+type MutableWorkspaceSpace = {
   id: string;
   name: string;
   image: ValidatedSpaceInput["image"];
   imageUrl: string;
-  locations: WorkspaceLocation[];
-  items: WorkspaceItem[];
+  locations: MutableWorkspaceLocation[];
+  items: MutableWorkspaceItem[];
 };
+
+const publishedWorkspaceSnapshots = new WeakSet<WorkspaceSpace>();
 
 export type WorkspaceCommandResult =
   | {
@@ -112,7 +139,9 @@ function readValidatedItemInput(value: unknown): ValidatedItemInput | null {
   };
 }
 
-function readWorkspaceLocation(value: unknown): WorkspaceLocation | null {
+function readWorkspaceLocation(
+  value: unknown
+): MutableWorkspaceLocation | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -128,7 +157,7 @@ function readWorkspaceLocation(value: unknown): WorkspaceLocation | null {
   return { id, name, coordinate };
 }
 
-function readWorkspaceItem(value: unknown): WorkspaceItem | null {
+function readWorkspaceItem(value: unknown): MutableWorkspaceItem | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -143,7 +172,7 @@ function readWorkspaceItem(value: unknown): WorkspaceItem | null {
   return { id, ...item };
 }
 
-function readWorkspaceState(value: unknown): WorkspaceSpace | null {
+function readWorkspaceState(value: unknown): MutableWorkspaceSpace | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -166,7 +195,7 @@ function readWorkspaceState(value: unknown): WorkspaceSpace | null {
       return null;
     }
 
-    const locations: WorkspaceLocation[] = [];
+    const locations: MutableWorkspaceLocation[] = [];
     const locationIds = new Set<string>();
 
     for (const valueLocation of value.locations) {
@@ -180,7 +209,7 @@ function readWorkspaceState(value: unknown): WorkspaceSpace | null {
       locations.push(location);
     }
 
-    const items: WorkspaceItem[] = [];
+    const items: MutableWorkspaceItem[] = [];
     const itemIds = new Set<string>();
 
     for (const valueItem of value.items) {
@@ -211,7 +240,20 @@ function readWorkspaceState(value: unknown): WorkspaceSpace | null {
   }
 }
 
-function freezeWorkspaceState(state: WorkspaceSpace): WorkspaceSpace {
+function readPublishedWorkspaceState(
+  value: unknown
+): MutableWorkspaceSpace | null {
+  if (
+    !isRecord(value) ||
+    !publishedWorkspaceSnapshots.has(value as WorkspaceSpace)
+  ) {
+    return null;
+  }
+
+  return readWorkspaceState(value);
+}
+
+function freezeWorkspaceState(state: MutableWorkspaceSpace): WorkspaceSpace {
   const image = Object.freeze({
     mimeType: state.image.mimeType,
     sizeBytes: state.image.sizeBytes
@@ -238,7 +280,7 @@ function freezeWorkspaceState(state: WorkspaceSpace): WorkspaceSpace {
   Object.freeze(locations);
   Object.freeze(items);
 
-  return Object.freeze({
+  const snapshot = Object.freeze({
     id: state.id,
     name: state.name,
     image,
@@ -246,9 +288,13 @@ function freezeWorkspaceState(state: WorkspaceSpace): WorkspaceSpace {
     locations,
     items
   }) as WorkspaceSpace;
+
+  publishedWorkspaceSnapshots.add(snapshot);
+
+  return snapshot;
 }
 
-function success(state: WorkspaceSpace): WorkspaceCommandResult {
+function success(state: MutableWorkspaceSpace): WorkspaceCommandResult {
   return {
     ok: true,
     state: freezeWorkspaceState(state)
@@ -281,7 +327,7 @@ export function createWorkspaceSpace(
 ): WorkspaceCommandResult {
   try {
     if (currentState !== null) {
-      if (readWorkspaceState(currentState) === null) {
+      if (readPublishedWorkspaceState(currentState) === null) {
         return failure(null, "WORKSPACE_COMMAND_INVALID");
       }
 
@@ -322,7 +368,7 @@ export function addWorkspaceLocation(
   }
 
   try {
-    const normalizedCurrentState = readWorkspaceState(currentState);
+    const normalizedCurrentState = readPublishedWorkspaceState(currentState);
 
     if (normalizedCurrentState === null) {
       return failure(null, "WORKSPACE_COMMAND_INVALID");
@@ -366,7 +412,7 @@ export function addWorkspaceItem(
   }
 
   try {
-    const normalizedCurrentState = readWorkspaceState(currentState);
+    const normalizedCurrentState = readPublishedWorkspaceState(currentState);
 
     if (normalizedCurrentState === null) {
       return failure(null, "WORKSPACE_COMMAND_INVALID");
@@ -413,7 +459,7 @@ export function getWorkspaceItemsForLocation(
   }
 
   try {
-    const normalizedState = readWorkspaceState(state);
+    const normalizedState = readPublishedWorkspaceState(state);
 
     if (normalizedState === null) {
       return [];

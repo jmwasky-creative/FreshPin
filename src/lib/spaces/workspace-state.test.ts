@@ -144,8 +144,25 @@ describe("workspace state", () => {
 
     expectWorkspaceSnapshotToBeDeeplyFrozen(itemResult.state);
 
+    const mutableLocations = itemResult.state.locations as unknown as Array<{
+      id: string;
+      name: string;
+      coordinate: {
+        xRatio: number;
+        yRatio: number;
+      };
+    }>;
+    const mutableFirstCoordinate = itemResult.state.locations[0]!
+      .coordinate as {
+      xRatio: number;
+      yRatio: number;
+    };
+    const mutableItems = itemResult.state.items as unknown as Array<{
+      name: string;
+    }>;
+
     expect(() => {
-      itemResult.state.locations.push({
+      mutableLocations.push({
         id: "location-pantry",
         name: "Pantry",
         coordinate: {
@@ -156,11 +173,11 @@ describe("workspace state", () => {
     }).toThrow(TypeError);
 
     expect(() => {
-      itemResult.state.locations[0]!.coordinate.xRatio = 0.75;
+      mutableFirstCoordinate.xRatio = 0.75;
     }).toThrow(TypeError);
 
     expect(() => {
-      itemResult.state.items[0]!.name = "Changed outside the workspace";
+      mutableItems[0]!.name = "Changed outside the workspace";
     }).toThrow(TypeError);
 
     expect(
@@ -173,6 +190,176 @@ describe("workspace state", () => {
         }
       })
     ).toMatchObject({ ok: true });
+  });
+
+  it("rejects a legal structural clone with an injected location", () => {
+    const currentState = createKitchenWorkspaceWithFridge();
+    const clonedState: WorkspaceSpace = {
+      ...currentState,
+      locations: [
+        ...currentState.locations,
+        {
+          id: "location-pantry",
+          name: "Pantry",
+          coordinate: {
+            xRatio: 0.75,
+            yRatio: 0.25
+          }
+        }
+      ]
+    };
+
+    const locationResult = addWorkspaceLocation(clonedState, {
+      id: "location-freezer",
+      name: "Freezer",
+      coordinate: {
+        xRatio: 0.1,
+        yRatio: 0.2
+      }
+    });
+    const itemResult = addWorkspaceItem(clonedState, {
+      id: "item-rice",
+      item: {
+        name: "Rice",
+        locationId: "location-pantry",
+        expiryDate: null
+      }
+    });
+
+    expect(locationResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(itemResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+  });
+
+  it("rejects a valid-looking cloned state with an injected location at every boundary", () => {
+    const currentState = createKitchenWorkspaceWithFridge();
+    const clonedState: WorkspaceSpace = {
+      ...currentState,
+      locations: [
+        ...currentState.locations,
+        {
+          id: "location-pantry",
+          name: "Pantry",
+          coordinate: {
+            xRatio: 0.75,
+            yRatio: 0.25
+          }
+        }
+      ]
+    };
+
+    const creationResult = createWorkspaceSpace(clonedState, {
+      id: "space-replacement",
+      input: validatedSpace,
+      imageUrl: "blob:replacement"
+    });
+    const locationResult = addWorkspaceLocation(clonedState, {
+      id: "location-freezer",
+      name: "Freezer",
+      coordinate: {
+        xRatio: 0.1,
+        yRatio: 0.2
+      }
+    });
+    const itemResult = addWorkspaceItem(clonedState, {
+      id: "item-rice",
+      item: {
+        name: "Rice",
+        locationId: "location-pantry",
+        expiryDate: null
+      }
+    });
+
+    expect(creationResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(locationResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(itemResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(
+      getWorkspaceItemsForLocation(clonedState, "location-pantry")
+    ).toEqual([]);
+  });
+
+  it("rejects cloned and deserialized states at creation and selector boundaries", () => {
+    const itemResult = addWorkspaceItem(createKitchenWorkspaceWithFridge(), {
+      id: "item-milk",
+      item: validatedItem
+    });
+
+    if (!itemResult.ok || itemResult.state === null) {
+      throw new Error("Expected the workspace item to be created.");
+    }
+
+    const clonedState: WorkspaceSpace = {
+      ...itemResult.state,
+      locations: [...itemResult.state.locations],
+      items: [...itemResult.state.items]
+    };
+    const deserializedState = JSON.parse(
+      JSON.stringify(itemResult.state)
+    ) as WorkspaceSpace;
+
+    const creationResult = createWorkspaceSpace(clonedState, {
+      id: "space-replacement",
+      input: validatedSpace,
+      imageUrl: "blob:replacement"
+    });
+    const locationResult = addWorkspaceLocation(deserializedState, {
+      id: "location-pantry",
+      name: "Pantry",
+      coordinate: {
+        xRatio: 0.75,
+        yRatio: 0.25
+      }
+    });
+
+    expect(creationResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(locationResult).toMatchObject({
+      ok: false,
+      state: null,
+      error: {
+        code: "WORKSPACE_COMMAND_INVALID"
+      }
+    });
+    expect(
+      getWorkspaceItemsForLocation(clonedState, "location-fridge")
+    ).toEqual([]);
+    expect(
+      getWorkspaceItemsForLocation(deserializedState, "location-fridge")
+    ).toEqual([]);
   });
 
   it("rejects creation when a valid active workspace already exists", () => {
@@ -420,7 +607,11 @@ describe("workspace state", () => {
       "location-fridge"
     );
 
-    selectedItems[0]!.name = "Changed outside the workspace";
+    const mutableSelectedItems = selectedItems as unknown as Array<{
+      name: string;
+    }>;
+
+    mutableSelectedItems[0]!.name = "Changed outside the workspace";
 
     expect(result.state.items[0]).toMatchObject({ name: "Milk" });
     expect(
