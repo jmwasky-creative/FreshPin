@@ -1,6 +1,6 @@
 "use client";
 
-import { type MouseEvent, useId } from "react";
+import { type MouseEvent, type Ref, useId } from "react";
 
 import {
   getNormalizedLocationFromClick,
@@ -28,6 +28,7 @@ type RenderableLocation = {
 };
 
 type SpaceCanvasProps = {
+  createLocationButtonRef?: Ref<HTMLButtonElement>;
   image: SpaceImage;
   locations: readonly unknown[];
   onCreateLocation?: (coordinate: NormalizedLocationCoordinate) => void;
@@ -84,6 +85,7 @@ const markerClassName =
   "absolute z-10 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white bg-emerald-500 shadow-lg";
 
 export function SpaceCanvas({
+  createLocationButtonRef,
   image,
   locations,
   onCreateLocation,
@@ -131,6 +133,7 @@ export function SpaceCanvas({
         aria-label="在空间图片中创建位置"
         className="relative block w-full overflow-hidden rounded-2xl text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300"
         onClick={handleCreateLocationActivation}
+        ref={createLocationButtonRef}
         type="button"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

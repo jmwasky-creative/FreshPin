@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/app-header";
+import { LocalSpacePreview } from "@/components/local-space-preview";
 
 export default function SpacesPage() {
   return (
@@ -12,6 +13,7 @@ export default function SpacesPage() {
         <p className="mt-4 max-w-lg leading-7 text-slate-600">
           下一步可上传冰箱、厨房或柜子的图片，再在图片上标记物品位置。
         </p>
+        <LocalSpacePreview />
       </main>
     </div>
   );

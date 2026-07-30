@@ -14,4 +14,14 @@ describe("SpacesPage", () => {
       screen.getByRole("heading", { name: "我的空间" })
     ).toBeInTheDocument();
   });
+
+  it("discloses that the space preview is local and resets on refresh", () => {
+    render(<SpacesPage />);
+
+    expect(
+      screen.getByRole("heading", { name: "本地空间预览" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("刷新页面后，图片和位置标记会清空。"))
+      .toBeInTheDocument();
+  });
 });
