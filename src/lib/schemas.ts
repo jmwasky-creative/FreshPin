@@ -43,3 +43,15 @@ export const createItemSchema = itemFieldsSchema.superRefine((value, context) =>
 });
 
 export const patchItemSchema = itemFieldsSchema.partial();
+
+export const passwordSchema = z.object({
+  password: z.string().min(8, "新密码至少需要 8 位。").max(128, "新密码过长。"),
+});
+
+export const createInviteSchema = z.object({
+  expiresAt: z.string().datetime().nullable().optional(),
+});
+
+export const disableInviteSchema = z.object({
+  inviteId: uuid,
+});

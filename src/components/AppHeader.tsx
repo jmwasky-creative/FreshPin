@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { appName } from "@/lib/env";
+import { HomeBackLink } from "@/components/HomeBackLink";
 import { SignOutButton } from "@/components/SignOutButton";
 
-export function AppHeader({ title }: { title?: string }) {
+export function AppHeader({ title, isAdmin = false }: { title?: string; isAdmin?: boolean }) {
   return (
     <header className="mb-5 flex items-center justify-between">
       <Link href="/" className="flex items-center gap-2">
@@ -12,7 +13,11 @@ export function AppHeader({ title }: { title?: string }) {
           <div className="font-bold">{title ?? "我的物品"}</div>
         </div>
       </Link>
-      <SignOutButton />
+      <div className="flex items-center gap-3">
+        {isAdmin && <Link href="/admin/invites" className="text-sm font-bold text-emerald-800">邀请码</Link>}
+        {title && <HomeBackLink />}
+        <SignOutButton />
+      </div>
     </header>
   );
 }

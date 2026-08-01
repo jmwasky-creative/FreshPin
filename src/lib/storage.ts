@@ -3,6 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export type ImageBucket = "space-images" | "item-images";
 
+export function createBrowserImageUrl(bucket: ImageBucket, path: string | null): string | null {
+  if (!path) return null;
+  const params = new URLSearchParams({ bucket, path });
+  return `/api/images?${params.toString()}`;
+}
+
 export function assertOwnedImagePath(
   path: string | null,
   userId: string,

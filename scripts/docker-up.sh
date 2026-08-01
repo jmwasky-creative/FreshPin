@@ -9,7 +9,7 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-if grep -Eq 'YOUR_PROJECT|YOUR_SUPABASE|REPLACE_WITH_A_RANDOM_SECRET' "$ENV_FILE"; then
+if grep -Eq 'YOUR_PROJECT|YOUR_SUPABASE|REPLACE_WITH_A_RANDOM_SECRET|ADMIN_EMAIL=admin@example\.com' "$ENV_FILE"; then
   echo "$ENV_FILE still contains placeholder values. Edit it before deployment."
   exit 1
 fi

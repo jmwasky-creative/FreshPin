@@ -24,6 +24,18 @@ export function requireEnv(name: string): string {
   return value;
 }
 
+export function getAdminBootstrapEnv(): { email: string; secret: string } {
+  const email = requireEnv("ADMIN_EMAIL").trim().toLowerCase();
+  const secret = requireEnv("ADMIN_BOOTSTRAP_SECRET");
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Error("ADMIN_EMAIL must be a valid email address.");
+  }
+  if (secret.length < 32) {
+    throw new Error("ADMIN_BOOTSTRAP_SECRET must contain at least 32 characters.");
+  }
+  return { email, secret };
+}
+
 export function appName(): string {
   return process.env.NEXT_PUBLIC_APP_NAME?.trim() || "KeepSpot";
 }

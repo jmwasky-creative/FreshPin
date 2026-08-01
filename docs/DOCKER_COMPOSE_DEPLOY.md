@@ -7,11 +7,11 @@ Docker 模式会启动两个轻量容器：
 ```text
 手机浏览器
    ↓
-keepspot-app（Next.js，端口 3000）
+freshpin-app（Next.js，端口 3000）
    ↓
 Supabase / Angus / Resend（外部服务）
 
-keepspot-reminder-scheduler
+freshpin-reminder-scheduler
    ↓ 每小时调用一次
 /api/cron/reminders
 ```
@@ -66,6 +66,7 @@ scripts/cron-runner.mjs
 
 ```text
 supabase/migrations/001_initial.sql
+supabase/migrations/002_invite_auth.sql
 ```
 
 该脚本会创建：
@@ -88,12 +89,13 @@ supabase/migrations/001_initial.sql
 
 Service Role Key 权限较高，只能写入服务器环境变量，不能提交到 Git，也不能放入前端代码。
 
-### 邮箱验证码模板
+### 配置邮箱验证回调
 
-在 Supabase Auth 中启用 Email Provider，并将登录邮件模板设置为包含 OTP：
+在 Supabase Auth 中启用 Email Provider 并开启 **Confirm email**。在 URL Configuration 设置 Site URL，并将部署域名的 `/auth/confirm` 加到 Redirect URLs，例如：
 
-```html
-<p>你的 KeepSpot 登录验证码是：{{ .Token }}</p>
+```text
+http://localhost:3000/auth/confirm
+https://your-domain.example/auth/confirm
 ```
 
 ---
@@ -122,6 +124,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://你的项目.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=你的_Publishable_Key
 SUPABASE_SERVICE_ROLE_KEY=你的_Service_Role_Key
 
+ADMIN_EMAIL=管理员真实邮箱
+ADMIN_BOOTSTRAP_SECRET=至少32位随机字符串
+
 CRON_SECRET=一段至少32位的随机字符串
 
 ANGUS_API_MODE=mock
@@ -133,6 +138,18 @@ REMINDER_DRY_RUN=true
 ```bash
 openssl rand -hex 32
 ```
+
+### 初始化管理员并管理邀请码
+
+容器启动后，执行一次受保护的初始化请求：
+
+```bash
+set -a; . ./.env.docker; set +a
+curl -X POST http://localhost:${APP_PORT:-3000}/api/admin/bootstrap \
+  -H "Authorization: Bearer $ADMIN_BOOTSTRAP_SECRET"
+```
+
+管理员用 `ADMIN_EMAIL` 和初始密码 `112233` 登录，随后必须修改密码。成功后删除 `.env.docker` 中的 `ADMIN_BOOTSTRAP_SECRET`，重新运行 `./scripts/docker-up.sh`。登录后在 `/admin/invites` 生成一次性邀请码。
 
 ### Angus 模式
 

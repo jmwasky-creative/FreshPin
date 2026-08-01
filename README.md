@@ -4,7 +4,7 @@
 
 ## 已实现的 MVP 闭环
 
-1. Supabase 邮箱 OTP 登录。
+1. Supabase 邮箱密码登录；普通用户需邀请码注册并验证邮箱。
 2. 上传厨房、冰箱、柜子等空间图片。
 3. 使用白色半透明毛玻璃层弱化背景。
 4. 点击图片创建位置点。
@@ -69,17 +69,45 @@ supabase/migrations/001_initial.sql
 - 私有 Storage Buckets：`space-images`、`item-images`
 - 全部 RLS 策略和用户初始化触发器
 
-3. 在 `.env.local` 中填写项目 URL、Publishable Key 和 Service Role Key。
+再执行：
 
-## 3. 配置邮箱验证码
-
-Supabase Auth 中启用 Email Provider。为了使用“输入验证码”的界面，需要把邮件模板配置为包含 OTP Token，例如：
-
-```html
-<p>你的登录验证码是：{{ .Token }}</p>
+```text
+supabase/migrations/002_invite_auth.sql
 ```
 
-若继续使用默认 Magic Link 模板，需要将登录页面改为链接回调方式。
+它会创建一次性邀请码表和邀请码校验触发器。邀请码只保存 SHA-256 哈希，普通用户注册时提交的邀请码会被原子占用。
+
+3. 在 `.env.local` 中填写项目 URL、Publishable Key 和 Service Role Key。
+
+## 3. 配置账号注册与邮箱验证
+
+在 Supabase Auth 中启用 Email Provider，并开启 **Confirm email**。在 URL Configuration 中设置生产站点为 Site URL，并将下列地址加入 Redirect URLs：
+
+```text
+http://localhost:3000/auth/confirm
+https://你的域名/auth/confirm
+```
+
+注册验证与忘记密码邮件都会回到 `/auth/confirm`；该页面会完成 Supabase 验证后跳转到登录或重置密码页面。
+
+### 初始化管理员
+
+在部署环境配置真实邮箱和一个至少 32 位的随机密钥：
+
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_BOOTSTRAP_SECRET=使用 openssl rand -hex 32 生成的随机值
+```
+
+应用启动后只执行一次：
+
+```bash
+set -a; . ./.env.docker; set +a
+curl -X POST http://localhost:3000/api/admin/bootstrap \
+  -H "Authorization: Bearer $ADMIN_BOOTSTRAP_SECRET"
+```
+
+管理员以 `ADMIN_EMAIL` 登录，初始密码为 `112233`，首次登录会被要求修改密码。初始化成功后，请删除 `ADMIN_BOOTSTRAP_SECRET` 并重新部署。管理员可在 `/admin/invites` 创建和停用邀请码。
 
 ## 4. Angus API 模式
 
@@ -207,6 +235,7 @@ npm run build
 - 日历天差。
 - 过期状态。
 - Angus/OCR 字段标准化。
+- 邀请码格式化、哈希和管理员权限标记。
 
 ## 9. 已知 MVP 限制
 

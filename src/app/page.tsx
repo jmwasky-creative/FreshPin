@@ -5,6 +5,7 @@ import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { SetupRequired } from "@/components/SetupRequired";
 import { TimezoneSync } from "@/components/TimezoneSync";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminUser, mustChangePassword } from "@/lib/authz";
 import { getDashboardStats, getRecentItems, listSpaces } from "@/lib/data";
 import { hasSupabasePublicEnv } from "@/lib/env";
 import type { RecentItemView, SpaceView } from "@/types/domain";
@@ -20,6 +21,7 @@ export default async function HomePage() {
   if (!hasSupabasePublicEnv()) return <SetupRequired />;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (mustChangePassword(user)) redirect("/change-password");
 
   const [spaces, recentItems, stats] = await Promise.all([
     listSpaces(),
@@ -30,7 +32,7 @@ export default async function HomePage() {
   return (
     <main className="page-shell">
       <TimezoneSync />
-      <AppHeader />
+      <AppHeader isAdmin={isAdminUser(user)} />
 
       <section className="card overflow-hidden p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4">

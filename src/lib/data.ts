@@ -1,6 +1,6 @@
 import type { ItemPreview, LocationView, RecentItemView, SpaceView } from "@/types/domain";
 import { createClient } from "@/lib/supabase/server";
-import { createSignedImageUrl } from "@/lib/storage";
+import { createBrowserImageUrl } from "@/lib/storage";
 
 interface RawItem {
   id: string;
@@ -44,7 +44,7 @@ async function mapItem(item: RawItem): Promise<ItemPreview> {
     id: item.id,
     name: item.name,
     imagePath: item.image_path,
-    imageUrl: await createSignedImageUrl("item-images", item.image_path),
+    imageUrl: createBrowserImageUrl("item-images", item.image_path),
     expireDate: item.expire_date,
     status: item.status,
   };
@@ -61,7 +61,7 @@ async function mapLocation(location: RawLocation): Promise<LocationView> {
 }
 
 async function mapSpace(space: RawSpace): Promise<SpaceView> {
-  const imageUrl = await createSignedImageUrl("space-images", space.image_path);
+  const imageUrl = createBrowserImageUrl("space-images", space.image_path);
   return {
     id: space.id,
     name: space.name,
@@ -113,7 +113,7 @@ export async function getRecentItems(limit = 8): Promise<RecentItemView[]> {
     id: row.id,
     name: row.name,
     imagePath: row.image_path,
-    imageUrl: await createSignedImageUrl("item-images", row.image_path),
+    imageUrl: createBrowserImageUrl("item-images", row.image_path),
     expireDate: row.expire_date,
     status: row.status,
     createdAt: row.created_at,

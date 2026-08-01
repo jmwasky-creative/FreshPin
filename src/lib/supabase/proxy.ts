@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { mustChangePassword } from "@/lib/authz";
 import { getSupabasePublicEnv, hasSupabasePublicEnv } from "@/lib/env";
 
 export async function updateSession(request: NextRequest) {
@@ -27,14 +28,22 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const user = data.user;
   const pathname = request.nextUrl.pathname;
-  const isPublic = pathname === "/login" || pathname.startsWith("/auth/");
+  const isPublic = pathname === "/login" || pathname === "/reset-password" || pathname.startsWith("/auth/");
   const isApi = pathname.startsWith("/api/");
+  const allowsPasswordChange = pathname === "/change-password" || pathname === "/api/auth/change-password";
 
   if (!user && !isPublic && !isApi) {
     const urlToLogin = request.nextUrl.clone();
     urlToLogin.pathname = "/login";
     urlToLogin.searchParams.set("next", pathname);
     return NextResponse.redirect(urlToLogin);
+  }
+
+  if (user && mustChangePassword(user) && !allowsPasswordChange) {
+    const changePassword = request.nextUrl.clone();
+    changePassword.pathname = "/change-password";
+    changePassword.search = "";
+    return NextResponse.redirect(changePassword);
   }
 
   if (user && pathname === "/login") {
